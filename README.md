@@ -1,4 +1,3 @@
-```markdown
 # llm-transformer
 
 This repository contains an implementation of a Transformer-based model for melody generation. The project demonstrates how to preprocess musical data, train a Transformer model, and generate melodies using the trained model. The implementation is modular, with each component organized into separate files for clarity and reusability.
