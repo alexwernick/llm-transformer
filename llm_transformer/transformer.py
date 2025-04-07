@@ -88,97 +88,6 @@ def _get_angles(pos, i, d_model):
     return pos * angle_dropout_rates
 
 
-class Transformer(tf.keras.Model):
-    """
-    The Transformer model architecture, consisting of an Encoder and Decoder.
-    """
-
-    def __init__(
-        self,
-        num_layers,
-        d_model,
-        num_heads,
-        d_feedforward,
-        input_vocab_size,
-        target_vocab_size,
-        max_num_positions_in_pe_encoder,
-        max_num_positions_in_pe_decoder,
-        dropout_rate=0.1,
-    ):
-        """
-        Parameters:
-            num_layers (int): Number of layers in both Encoder and Decoder.
-            d_model (int): Dimension of the model.
-            num_heads (int): Number of attention heads.
-            d_feedforward (int): Dimension of the feed forward network.
-            input_vocab_size (int): Size of the input vocabulary.
-            target_vocab_size (int): Size of the target vocabulary.
-            max_num_positions_in_pe_encoder (int): The maximum positions for input.
-            max_num_positions_in_pe_decoder (int): The maximum positions for
-                target.
-            dropout_rate (float): Dropout dropout_rate.
-        """
-        super(Transformer, self).__init__()
-        self.encoder = Encoder(
-            num_layers,
-            d_model,
-            num_heads,
-            d_feedforward,
-            input_vocab_size,
-            max_num_positions_in_pe_encoder,
-            dropout_rate,
-        )
-        self.decoder = Decoder(
-            num_layers,
-            d_model,
-            num_heads,
-            d_feedforward,
-            target_vocab_size,
-            max_num_positions_in_pe_decoder,
-            dropout_rate,
-        )
-
-        self.final_layer = Dense(target_vocab_size)
-
-    def call(
-        self,
-        input,
-        target,
-        training=True,
-        enc_padding_mask=None,
-        look_ahead_mask=None,
-        dec_padding_mask=None,
-    ):
-        """
-        Process the input through the Transformer model.
-
-        Parameters:
-            input (Tensor): Input tensor to the Encoder.
-            target (Tensor): Target tensor for the Decoder.
-            training (bool): Whether the layer should behave in training mode.
-            enc_padding_mask (Tensor): Padding mask for the Encoder.
-            look_ahead_mask (Tensor): Look-ahead mask for the Decoder.
-            dec_padding_mask (Tensor): Padding mask for the Decoder.
-
-        Returns:
-            Tensor: The final output of the Transformer.
-            dict: Attention weights from the Decoder layers.
-        """
-        enc_output = self.encoder(
-            input, mask=enc_padding_mask, training=training
-        )  # (batch_size, input_seq_len, d_model)
-
-        dec_output = self.decoder(
-            target, enc_output, look_ahead_mask, dec_padding_mask, training=training
-        )  # (batch_size, tar_seq_len, d_model)
-
-        logits = self.final_layer(
-            dec_output
-        )  # (batch_size, target_seq_len, target_vocab_size)
-
-        return logits
-
-
 class Encoder(tf.keras.layers.Layer):
     """
     The Encoder of a Transformer model, consisting of multiple EncoderLayers.
@@ -402,6 +311,16 @@ class DecoderLayer(tf.keras.layers.Layer):
     layers and a Feed Forward Neural Network.
     """
 
+    mha1: MultiHeadAttention
+    mha2: MultiHeadAttention
+    ffn: tf.keras.Sequential
+    layernorm1: LayerNormalization
+    layernorm2: LayerNormalization
+    layernorm3: LayerNormalization
+    dropout1: Dropout
+    dropout2: Dropout
+    dropout3: Dropout
+
     def __init__(self, d_model, num_heads, d_feedforward, dropout_rate=0.1):
         """
         Parameters:
@@ -424,7 +343,14 @@ class DecoderLayer(tf.keras.layers.Layer):
         self.dropout2 = Dropout(dropout_rate)
         self.dropout3 = Dropout(dropout_rate)
 
-    def call(self, x, enc_output, training, look_ahead_mask, padding_mask):
+    def call(
+        self,
+        x: tf.Tensor,
+        enc_output: tf.Tensor,
+        training: bool,
+        look_ahead_mask: tf.Tensor,
+        padding_mask: tf.Tensor,
+    ):
         """
         Process the input through the Decoder layer.
 
@@ -451,6 +377,101 @@ class DecoderLayer(tf.keras.layers.Layer):
         out3 = self.layernorm3(ffn_output + out2)
 
         return out3
+
+
+class Transformer(tf.keras.Model):
+    """
+    The Transformer model architecture, consisting of an Encoder and Decoder.
+    """
+
+    encoder: Encoder
+    decoder: Decoder
+    final_layer: Dense
+
+    def __init__(
+        self,
+        num_layers: int,
+        d_model: int,
+        num_heads: int,
+        d_feedforward: int,
+        input_vocab_size: int,
+        target_vocab_size: int,
+        max_num_positions_in_pe_encoder: int,
+        max_num_positions_in_pe_decoder: int,
+        dropout_rate: float = 0.1,
+    ):
+        """
+        Parameters:
+            num_layers (int): Number of layers in both Encoder and Decoder.
+            d_model (int): Dimension of the model.
+            num_heads (int): Number of attention heads.
+            d_feedforward (int): Dimension of the feed forward network.
+            input_vocab_size (int): Size of the input vocabulary.
+            target_vocab_size (int): Size of the target vocabulary.
+            max_num_positions_in_pe_encoder (int): The maximum positions for input.
+            max_num_positions_in_pe_decoder (int): The maximum positions for
+                target.
+            dropout_rate (float): Dropout dropout_rate.
+        """
+        super(Transformer, self).__init__()
+        self.encoder = Encoder(
+            num_layers,
+            d_model,
+            num_heads,
+            d_feedforward,
+            input_vocab_size,
+            max_num_positions_in_pe_encoder,
+            dropout_rate,
+        )
+        self.decoder = Decoder(
+            num_layers,
+            d_model,
+            num_heads,
+            d_feedforward,
+            target_vocab_size,
+            max_num_positions_in_pe_decoder,
+            dropout_rate,
+        )
+
+        self.final_layer = Dense(target_vocab_size)
+
+    def call(
+        self,
+        input: tf.Tensor,
+        target: tf.Tensor,
+        training: bool = True,
+        enc_padding_mask: tf.Tensor = None,
+        look_ahead_mask: tf.Tensor = None,
+        dec_padding_mask: tf.Tensor = None,
+    ):
+        """
+        Process the input through the Transformer model.
+
+        Parameters:
+            input (Tensor): Input tensor to the Encoder.
+            target (Tensor): Target tensor for the Decoder.
+            training (bool): Whether the layer should behave in training mode.
+            enc_padding_mask (Tensor): Padding mask for the Encoder.
+            look_ahead_mask (Tensor): Look-ahead mask for the Decoder.
+            dec_padding_mask (Tensor): Padding mask for the Decoder.
+
+        Returns:
+            Tensor: The final output of the Transformer.
+            dict: Attention weights from the Decoder layers.
+        """
+        enc_output = self.encoder(
+            input, mask=enc_padding_mask, training=training
+        )  # (batch_size, input_seq_len, d_model)
+
+        dec_output = self.decoder(
+            target, enc_output, look_ahead_mask, dec_padding_mask, training=training
+        )  # (batch_size, tar_seq_len, d_model)
+
+        logits = self.final_layer(
+            dec_output
+        )  # (batch_size, target_seq_len, target_vocab_size)
+
+        return logits
 
 
 if __name__ == "__main__":
