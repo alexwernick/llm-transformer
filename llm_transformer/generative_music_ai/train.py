@@ -35,8 +35,8 @@ from melody_preprocessor import MelodyPreprocessor
 from transformer import Transformer
 
 # Global parameters
-EPOCHS = 10
-BATCH_SIZE = 32
+EPOCHS = 1
+BATCH_SIZE = 5
 DATA_PATH = "dataset.json"
 MAX_POSITIONS_IN_POSITIONAL_ENCODING = 100
 
