@@ -9,6 +9,9 @@ readme = "README.md"
 python = "^3.12"
 tensorflow = "^2.19.0"
 matplotlib = "^3.10.1"
+torch = "^2.6.0"
+torchvision = "^0.21.0"
+torchaudio = "^2.6.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
