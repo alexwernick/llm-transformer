@@ -23,7 +23,7 @@ def main():
     # tokenizer but there must be a better way
     dropout = 0.1  # Regularizes the model to prevent overfitting
     learning_rate = 0.0001  # Impacts convergence speed and stability
-    batch_size = 50  # noqa: E501 Larger batch sizes improve learning stability but require more memory
+    batch_size = 10  # noqa: E501 Larger batch sizes improve learning stability but require more memory
     epochs = 3  # 100
 
     # src_data, tgt_data = generate_data(src_vocab_size, tgt_vocab_size, max_seq_length)
