@@ -9,8 +9,6 @@ from llm_transformer.datacamp.transformer import Transformer
 
 
 def main():
-    # src_vocab_size = 5000
-    # tgt_vocab_size = 5000
     d_model = 512  # Higher values increase model capacity but require more computation
     num_heads = 8  # noqa: E501 More heads can capture diverse aspects of data, but are computationally intensive
     num_layers = (
@@ -54,22 +52,6 @@ def main():
     evaluate_performance(
         transformer, datasets, criterion, tokenizer.vocab_size, batch_size
     )
-
-
-def generate_data(src_vocab_size, tgt_vocab_size, max_seq_length):
-    """
-    For illustrative purposes, a dummy dataset will be crafted in this example.
-    However, in a practical scenario, a more substantial dataset would be
-    employed, and the process would involve text preprocessing along with the
-    creation of vocabulary mappings for both the source and target languages.
-    """
-    src_data = torch.randint(
-        1, src_vocab_size, (64, max_seq_length)
-    )  # (batch_size, seq_length)
-    tgt_data = torch.randint(
-        1, tgt_vocab_size, (64, max_seq_length)
-    )  # (batch_size, seq_length)
-    return src_data, tgt_data
 
 
 def train(
