@@ -17,8 +17,15 @@ class Transformer(nn.Module):
         d_ff,
         max_seq_length,
         dropout,
+        device=None,
     ):
         super(Transformer, self).__init__()
+        self.device = (
+            device
+            if device is not None
+            else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        )
+
         self.encoder_embedding = nn.Embedding(src_vocab_size, d_model)
         self.decoder_embedding = nn.Embedding(tgt_vocab_size, d_model)
         self.positional_encoding = PositionalEncoding(d_model, max_seq_length)
@@ -33,17 +40,27 @@ class Transformer(nn.Module):
         self.fc = nn.Linear(d_model, tgt_vocab_size)
         self.dropout = nn.Dropout(dropout)
 
+        # Move model to device
+        self.to(self.device)
+
     def generate_mask(self, src, tgt):
-        src_mask = (src != 0).unsqueeze(1).unsqueeze(2)
-        tgt_mask = (tgt != 0).unsqueeze(1).unsqueeze(3)
+        src_mask = (src != 0).unsqueeze(1).unsqueeze(2).to(self.device)
+        tgt_mask = (tgt != 0).unsqueeze(1).unsqueeze(3).to(self.device)
         seq_length = tgt.size(1)
         nopeak_mask = (
-            1 - torch.triu(torch.ones(1, seq_length, seq_length), diagonal=1)
+            1
+            - torch.triu(
+                torch.ones(1, seq_length, seq_length, device=self.device), diagonal=1
+            )
         ).bool()
         tgt_mask = tgt_mask & nopeak_mask
         return src_mask, tgt_mask
 
     def forward(self, src, tgt):
+        # Move input tensors to device
+        src = src.to(self.device)
+        tgt = tgt.to(self.device)
+
         src_mask, tgt_mask = self.generate_mask(src, tgt)
         src_embedded = self.dropout(
             self.positional_encoding(self.encoder_embedding(src))
