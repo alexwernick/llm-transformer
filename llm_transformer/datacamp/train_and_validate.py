@@ -9,6 +9,10 @@ from llm_transformer.datacamp.transformer import Transformer
 
 
 def main():
+    # Set device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
     d_model = 512  # Higher values increase model capacity but require more computation
     num_heads = 8  # noqa: E501 More heads can capture diverse aspects of data, but are computationally intensive
     num_layers = (
@@ -27,7 +31,7 @@ def main():
     datasets = load_opus_dataset(language_pair, debug_mode=True, debug_samples=10)
 
     tokenizer = AutoTokenizer.from_pretrained(f"Helsinki-NLP/opus-mt-{language_pair}")
-    criterion = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
+    criterion = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id).to(device)
 
     transformer = Transformer(
         tokenizer.vocab_size,
@@ -38,6 +42,7 @@ def main():
         d_ff,
         max_seq_length,
         dropout,
+        device=device,
     )
 
     train(
@@ -48,14 +53,22 @@ def main():
         epochs,
         criterion,
         batch_size,
+        device,
     )
     evaluate_performance(
-        transformer, datasets, criterion, tokenizer.vocab_size, batch_size
+        transformer, datasets, criterion, tokenizer.vocab_size, batch_size, device
     )
 
 
 def train(
-    transformer, datasets, tgt_vocab_size, learning_rate, epochs, criterion, batch_size
+    transformer,
+    datasets,
+    tgt_vocab_size,
+    learning_rate,
+    epochs,
+    criterion,
+    batch_size,
+    device,
 ):
     train_dataloader = DataLoader(
         datasets["train"], batch_size=batch_size, shuffle=True
@@ -69,10 +82,9 @@ def train(
     for epoch in range(epochs):
         total_loss = 0
         for batch_idx, batch in enumerate(train_dataloader):
-            # Extract source and target data
-            src_data = batch["input_ids"]
-            # Create target data by shifting input_ids (assuming labels contains the target tokens)
-            tgt_data = batch["labels"]
+            # Extract source and target data and move to device
+            src_data = batch["input_ids"].to(device)
+            tgt_data = batch["labels"].to(device)
 
             # Zero gradients
             optimizer.zero_grad()
@@ -99,15 +111,18 @@ def train(
             # Print batch progress
             if (batch_idx + 1) % 10 == 0:
                 print(
-                    f"Epoch: {epoch+1}, Batch: {batch_idx+1}/{len(train_dataloader)}, Loss: {loss.item():.4f}"
+                    f"Epoch [{epoch+1}/{epochs}], Batch [{batch_idx+1}/{len(train_dataloader)}], "
+                    f"Loss: {loss.item():.4f}"
                 )
 
-        # Calculate average loss for the epoch
+        # Print epoch progress
         avg_loss = total_loss / len(train_dataloader)
-        print(f"Epoch: {epoch+1}, Average Loss: {avg_loss:.4f}")
+        print(f"Epoch [{epoch+1}/{epochs}], Average Loss: {avg_loss:.4f}")
 
 
-def evaluate_performance(transformer, datasets, criterion, tgt_vocab_size, batch_size):
+def evaluate_performance(
+    transformer, datasets, criterion, tgt_vocab_size, batch_size, device
+):
     val_dataloader = (
         DataLoader(datasets["validation"], batch_size=batch_size)
         if datasets["validation"] is not None
@@ -123,14 +138,17 @@ def evaluate_performance(transformer, datasets, criterion, tgt_vocab_size, batch
 
     with torch.no_grad():
         for batch in val_dataloader:
-            src_data = batch["input_ids"]
-            tgt_data = batch["labels"]
+            # Extract source and target data and move to device
+            src_data = batch["input_ids"].to(device)
+            tgt_data = batch["labels"].to(device)
 
+            # Forward pass
             output = transformer(
                 src_data,
                 tgt_data[:, :-1],
             )
 
+            # Calculate loss
             loss = criterion(
                 output.contiguous().view(-1, tgt_vocab_size),
                 tgt_data[:, 1:].contiguous().view(-1),
