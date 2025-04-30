@@ -13,12 +13,12 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    d_model = 512  # Higher values increase model capacity but require more computation
+    d_model = 100  # Higher values increase model capacity but require more computation
     num_heads = 8  # noqa: E501 More heads can capture diverse aspects of data, but are computationally intensive
     num_layers = (
         6  # More layers improve representation power, but can lead to overfitting
     )
-    d_ff = 2048  # Larger feed-forward networks increase model robustness
+    d_ff = 1000  # Larger feed-forward networks increase model robustness
     max_seq_length = 512  # I have fixed this to match what we get back from
     # tokenizer but there must be a better way
     dropout = 0.1  # Regularizes the model to prevent overfitting
