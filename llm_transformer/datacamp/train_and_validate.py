@@ -13,7 +13,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    d_model = 100  # Higher values increase model capacity but require more computation
+    d_model = 120  # Higher values increase model capacity but require more computation
     num_heads = 8  # noqa: E501 More heads can capture diverse aspects of data, but are computationally intensive
     num_layers = (
         6  # More layers improve representation power, but can lead to overfitting
